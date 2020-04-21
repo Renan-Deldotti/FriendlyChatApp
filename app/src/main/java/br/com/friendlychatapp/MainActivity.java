@@ -21,10 +21,8 @@ import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-//import com.google.firebase.database.DatabaseReference;
-//import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,8 +43,8 @@ public class MainActivity extends AppCompatActivity {
 
     private String userName;
 
-    //private FirebaseDatabase firebaseDatabase;
-    //private DatabaseReference databaseReference;
+    private FirebaseDatabase firebaseDatabase;
+    private DatabaseReference databaseReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,8 +53,8 @@ public class MainActivity extends AppCompatActivity {
 
         userName = ANONYMOUS;
 
-        //firebaseDatabase = FirebaseDatabase.getInstance();
-        //databaseReference = firebaseDatabase.getReference().child("messages");
+        firebaseDatabase = FirebaseDatabase.getInstance();
+        databaseReference = firebaseDatabase.getReference().child("messages");
 
         progressBar = findViewById(R.id.progressBar);
         messageListView = findViewById(R.id.messageListView);
@@ -99,21 +97,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 FriendlyMessage friendlyMessage = new FriendlyMessage(messageEditText.getText().toString(),userName,null);
-                //databaseReference.setValue(friendlyMessage);
-                FirebaseFirestore db = FirebaseFirestore.getInstance();
-                db.collection("messages").add(friendlyMessage)
-                        .addOnSuccessListener(new OnSuccessListener<DocumentReference>() {
-                            @Override
-                            public void onSuccess(DocumentReference documentReference) {
-                                Toast.makeText(MainActivity.this,"Success",Toast.LENGTH_LONG).show();
-                            }
-                        })
-                        .addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                Toast.makeText(MainActivity.this,"Fail",Toast.LENGTH_LONG).show();
-                            }
-                        });
+                databaseReference.push().setValue(friendlyMessage);
                 messageEditText.setText("");
             }
         });
