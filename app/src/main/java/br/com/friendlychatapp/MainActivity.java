@@ -4,8 +4,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.os.Bundle;
-import android.renderscript.ScriptGroup;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
@@ -72,8 +72,10 @@ public class MainActivity extends AppCompatActivity {
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = firebaseAuth.getCurrentUser();
                 if(user != null){
+                    onSignedInInitialize(user.getDisplayName());
                     Toast.makeText(MainActivity.this,"Logged in",Toast.LENGTH_LONG).show();
                 }else{
+                    onSignedOutCleanup();
                     // Cria a lista de provides de opçoes de login
                     List<AuthUI.IdpConfig> providers = Arrays.asList(
                             new AuthUI.IdpConfig.EmailBuilder().build(),
@@ -91,28 +93,7 @@ public class MainActivity extends AppCompatActivity {
 
         firebaseDatabase = FirebaseDatabase.getInstance();
         databaseReference = firebaseDatabase.getReference().child("messages");
-        childEventListener = new ChildEventListener() {
-            @Override
-            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
-                FriendlyMessage fm = dataSnapshot.getValue(FriendlyMessage.class);
-                messageAdapter.add(fm);
-                Log.e(MainActivity.class.getSimpleName()+" Snapshot data",""+fm.toString());
-                messageListView.smoothScrollToPosition(messageListView.getCount());
-            }
 
-            @Override
-            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {}
-
-            @Override
-            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {}
-
-            @Override
-            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {}
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {}
-        };
-        databaseReference.addChildEventListener(childEventListener);
         progressBar = findViewById(R.id.progressBar);
         messageListView = findViewById(R.id.messageListView);
         photoPicker = findViewById(R.id.photoPickerButton);
@@ -169,6 +150,83 @@ public class MainActivity extends AppCompatActivity {
                 messageEditText.setText("");
             }
         });
+        /* Teste Crashlytics
+        Button crashButton = new Button(this);
+        crashButton.setText("Crash!");
+        crashButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View view) {
+                throw new RuntimeException("Test Crash"); // Force a crash
+            }
+        });
+        addContentView(crashButton, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));*/
+    }
+
+    private void onSignedOutCleanup() {
+        userName = ANONYMOUS;
+        messageAdapter.clear();
+        detachDatabaseReadListener();
+    }
+
+    private void detachDatabaseReadListener() {
+        // Remove the listener, so the user cannot read messages anymore
+        if(childEventListener != null) {
+            databaseReference.removeEventListener(childEventListener);
+            childEventListener = null;
+        }
+    }
+
+    private void onSignedInInitialize(String displayName) {
+        // Set the username to retrieve info from the right user
+        userName = displayName;
+        attachDatabaseReadListener();
+    }
+
+    private void attachDatabaseReadListener() {
+        // Set the listener to retrieve info from the Firebase
+        // if the listener is not created yet
+        if (childEventListener == null) {
+            childEventListener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                    FriendlyMessage fm = dataSnapshot.getValue(FriendlyMessage.class);
+                    messageAdapter.add(fm);
+                    Log.e(MainActivity.class.getSimpleName() + " Snapshot data", "" + fm.toString());
+                    messageListView.smoothScrollToPosition(messageListView.getCount());
+                }
+
+                @Override
+                public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                }
+
+                @Override
+                public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+                }
+
+                @Override
+                public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                }
+            };
+            databaseReference.addChildEventListener(childEventListener);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == RC_SIGN_IN){
+            if (resultCode == RESULT_OK){
+                Toast.makeText(MainActivity.this,"Logged in",Toast.LENGTH_LONG).show();
+            }else if(resultCode == RESULT_CANCELED){
+                Toast.makeText(MainActivity.this,"Sign in canceled",Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }
     }
 
     @Override
@@ -180,13 +238,22 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        return super.onOptionsItemSelected(item);
+        switch (item.getItemId()){
+            case R.id.sign_out_menu:
+                AuthUI.getInstance().signOut(MainActivity.this);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        firebaseAuth.removeAuthStateListener(authStateListener);
+        if(authStateListener != null)
+            firebaseAuth.removeAuthStateListener(authStateListener);
+        detachDatabaseReadListener();
+        messageAdapter.clear();
     }
 
     @Override
