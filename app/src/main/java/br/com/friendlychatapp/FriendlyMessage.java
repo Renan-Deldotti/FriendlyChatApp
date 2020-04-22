@@ -1,5 +1,7 @@
 package br.com.friendlychatapp;
 
+import androidx.annotation.Nullable;
+
 class FriendlyMessage {
     private String text;
     private String name;
@@ -7,7 +9,7 @@ class FriendlyMessage {
 
     public FriendlyMessage(){}
 
-    public FriendlyMessage(String text, String name, String photoUrl){
+    public FriendlyMessage(String text, String name, @Nullable String photoUrl){
         this.text = text;
         this.name = name;
         this.photoUrl = photoUrl;
