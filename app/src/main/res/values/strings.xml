@@ -2,4 +2,7 @@
     <string name="app_name">FriendlyChatApp</string>
     <string name="sign_out">Sign Out</string>
     <string name="send_button_label">Send</string>
+    <string name="photopicker_button">Photopicker Button</string>
+    <string name="message">Message</string>
+    <string name="message_image">message image</string>
 </resources>
