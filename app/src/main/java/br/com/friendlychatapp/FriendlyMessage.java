@@ -1,5 +1,6 @@
 package br.com.friendlychatapp;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 class FriendlyMessage {
@@ -37,5 +38,11 @@ class FriendlyMessage {
 
     public void setPhotoUrl(String photoUrl) {
         this.photoUrl = photoUrl;
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return "Name: "+getName()+"\tText: "+getText();
     }
 }

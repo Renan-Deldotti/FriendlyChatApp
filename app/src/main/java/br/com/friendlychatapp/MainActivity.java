@@ -66,7 +66,8 @@ public class MainActivity extends AppCompatActivity {
             public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
                 FriendlyMessage fm = dataSnapshot.getValue(FriendlyMessage.class);
                 messageAdapter.add(fm);
-                //Log.e("OEINWQOIEN",""+dataSnapshot.getValue());
+                Log.e(MainActivity.class.getSimpleName()+" Snapshot data",""+fm.toString());
+                messageListView.smoothScrollToPosition(messageListView.getCount());
             }
 
             @Override
