@@ -32,8 +32,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
+import com.google.android.gms.tasks.Continuation;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.material.snackbar.BaseTransientBottomBar;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -257,12 +262,43 @@ public class MainActivity extends AppCompatActivity {
         }else if(requestCode == RC_PHOTO_PICKER){
             if (resultCode == RESULT_OK){
                 Uri selectedImageUri = data.getData();
-                StorageReference photoRef = storageReference.child(selectedImageUri.getLastPathSegment());
+                final StorageReference photoRef = storageReference.child(selectedImageUri.getLastPathSegment());
                 UploadTask uploadTask = photoRef.putFile(selectedImageUri);
                 uploadTask.addOnFailureListener(MainActivity.this, new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
-                        //
+                        Snackbar.make(findViewById(R.id.main_activity),"Fail", BaseTransientBottomBar.LENGTH_LONG).show();
+                    }
+                }).addOnSuccessListener(MainActivity.this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                        Snackbar.make(findViewById(R.id.main_activity),"Success",BaseTransientBottomBar.LENGTH_LONG).show();
+                        Log.e(TAG,"BytesTransferred: "+taskSnapshot.getBytesTransferred());
+                        Log.e(TAG,"TotalByteCount: "+taskSnapshot.getTotalByteCount());
+                        Log.e(TAG,"UploadSessionUri: "+taskSnapshot.getUploadSessionUri());
+                    }
+                });
+                Task<Uri> uriTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                    @Override
+                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                        if(!task.isSuccessful()){
+                            throw task.getException();
+                        }
+                        return photoRef.getDownloadUrl();
+                    }
+                }).addOnCompleteListener(MainActivity.this, new OnCompleteListener<Uri>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Uri> task) {
+                        if (!task.isSuccessful()){
+                            Toast.makeText(MainActivity.this,"No download Url",Toast.LENGTH_LONG).show();
+                        }
+                        Uri downloadUri = task.getResult();
+                        if (downloadUri != null) {
+                            FriendlyMessage friendlyMessage = new FriendlyMessage(null, userName, downloadUri.toString());
+                            databaseReference.push().setValue(friendlyMessage);
+                        }else {
+                            Toast.makeText(MainActivity.this,"No download Url",Toast.LENGTH_LONG).show();
+                        }
                     }
                 });
                 /*photoRef.putFile(selectedImageUri);
