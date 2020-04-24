@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -39,6 +40,7 @@ import com.google.firebase.storage.StorageException;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -251,6 +253,7 @@ public class MainActivity extends AppCompatActivity {
                 Uri selectedImageUri = data.getData();
                 StorageReference photoRef = storageReference.child(selectedImageUri.getLastPathSegment());
                 photoRef.putFile(selectedImageUri);
+                Log.e("StorageRef","LastPath: "+photoRef);
                 photoRef.getDownloadUrl().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Uri>() {
                     @Override
                     public void onSuccess(Uri uri) {
@@ -277,8 +280,20 @@ public class MainActivity extends AppCompatActivity {
             case R.id.sign_out_menu:
                 AuthUI.getInstance().signOut(MainActivity.this);
                 return true;
+            case R.id.clear_cache:
+                clearCache(MainActivity.this);
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void clearCache(Context context) {
+        try {
+            boolean deleted = context.getCacheDir().delete();
+            Toast.makeText(MainActivity.this,"Deleted: "+deleted,Toast.LENGTH_LONG).show();
+        }catch (Exception e){
+            Log.e(TAG,"CODE: "+e.getMessage());
         }
     }
 

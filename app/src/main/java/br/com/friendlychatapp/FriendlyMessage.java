@@ -43,6 +43,6 @@ class FriendlyMessage {
     @NonNull
     @Override
     public String toString() {
-        return "Name: "+getName()+"\tText: "+getText()+"\tUrl: "+photoUrl;
+        return "Name: "+getName()+"\tText: "+getText()+"\t\tUrl: "+photoUrl;
     }
 }
