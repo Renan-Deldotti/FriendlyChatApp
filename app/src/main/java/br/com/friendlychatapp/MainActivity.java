@@ -214,7 +214,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
                     FriendlyMessage fm = dataSnapshot.getValue(FriendlyMessage.class);
                     messageAdapter.add(fm);
-                    Log.e(MainActivity.class.getSimpleName() + " Snapshot data", "" + fm.toString());
+                    //Log.e(MainActivity.class.getSimpleName() + " Snapshot data", "" + fm.toString());
                     messageListView.smoothScrollToPosition(messageListView.getCount());
                 }
 
@@ -252,8 +252,8 @@ public class MainActivity extends AppCompatActivity {
             if (resultCode == RESULT_OK){
                 Uri selectedImageUri = data.getData();
                 StorageReference photoRef = storageReference.child(selectedImageUri.getLastPathSegment());
+                //Log.e("StorageRef","LastPath: "+photoRef);
                 photoRef.putFile(selectedImageUri);
-                Log.e("StorageRef","LastPath: "+photoRef);
                 photoRef.getDownloadUrl().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Uri>() {
                     @Override
                     public void onSuccess(Uri uri) {
