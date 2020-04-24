@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     private String userName;
 
+    // Firebase variables
     private FirebaseDatabase firebaseDatabase;
     private DatabaseReference databaseReference;
     private ChildEventListener childEventListener;
@@ -86,6 +87,10 @@ public class MainActivity extends AppCompatActivity {
                             AuthUI.getInstance()
                                     .createSignInIntentBuilder()
                                     .setAvailableProviders(providers)
+                                    .setLogo(R.mipmap.ic_launcher)
+                                    .setTosAndPrivacyPolicyUrls(
+                                            "https://example.com/terms.html",
+                                            "https://example.com/privacy.html")
                                     .build(),
                             RC_SIGN_IN);
                 }
