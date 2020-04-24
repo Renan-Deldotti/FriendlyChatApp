@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputFilter;
@@ -14,11 +15,13 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
@@ -31,6 +34,10 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageException;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,6 +67,8 @@ public class MainActivity extends AppCompatActivity {
     private ChildEventListener childEventListener;
     private FirebaseAuth firebaseAuth;
     private FirebaseAuth.AuthStateListener authStateListener;
+    private FirebaseStorage firebaseStorage;
+    private StorageReference storageReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
 
         userName = ANONYMOUS;
 
+        firebaseStorage = FirebaseStorage.getInstance();
         firebaseAuth = FirebaseAuth.getInstance();
         authStateListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -99,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
 
         firebaseDatabase = FirebaseDatabase.getInstance();
         databaseReference = firebaseDatabase.getReference().child("messages");
+        storageReference = firebaseStorage.getReference().child("chat_photos");
 
         progressBar = findViewById(R.id.progressBar);
         messageListView = findViewById(R.id.messageListView);
@@ -234,6 +245,21 @@ public class MainActivity extends AppCompatActivity {
             }else if(resultCode == RESULT_CANCELED){
                 Toast.makeText(MainActivity.this,"Sign in canceled",Toast.LENGTH_LONG).show();
                 finish();
+            }
+        }else if(requestCode == RC_PHOTO_PICKER){
+            if (resultCode == RESULT_OK){
+                Uri selectedImageUri = data.getData();
+                StorageReference photoRef = storageReference.child(selectedImageUri.getLastPathSegment());
+                photoRef.putFile(selectedImageUri);
+                photoRef.getDownloadUrl().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Uri>() {
+                    @Override
+                    public void onSuccess(Uri uri) {
+                        FriendlyMessage friendlyMessage = new FriendlyMessage(null,userName,uri.toString());
+                        databaseReference.push().setValue(friendlyMessage);
+                    }
+                });
+            }else{
+                Toast.makeText(MainActivity.this,"Error uploading image.",Toast.LENGTH_LONG).show();
             }
         }
     }
