@@ -6,8 +6,14 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
@@ -252,15 +258,21 @@ public class MainActivity extends AppCompatActivity {
             if (resultCode == RESULT_OK){
                 Uri selectedImageUri = data.getData();
                 StorageReference photoRef = storageReference.child(selectedImageUri.getLastPathSegment());
-                //Log.e("StorageRef","LastPath: "+photoRef);
-                photoRef.putFile(selectedImageUri);
+                UploadTask uploadTask = photoRef.putFile(selectedImageUri);
+                uploadTask.addOnFailureListener(MainActivity.this, new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        //
+                    }
+                });
+                /*photoRef.putFile(selectedImageUri);
                 photoRef.getDownloadUrl().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Uri>() {
                     @Override
                     public void onSuccess(Uri uri) {
                         FriendlyMessage friendlyMessage = new FriendlyMessage(null,userName,uri.toString());
                         databaseReference.push().setValue(friendlyMessage);
                     }
-                });
+                });*/
             }else{
                 Toast.makeText(MainActivity.this,"Error uploading image.",Toast.LENGTH_LONG).show();
             }
