@@ -503,8 +503,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void applyRetrievedLengthLimit() {
-        Long friendlyMessageLength = firebaseRemoteConfig.getLong(FRIENDLY_MSG_LENGTH_KEY);
-        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(friendlyMessageLength.intValue())});
+        long friendlyMessageLength = firebaseRemoteConfig.getLong(FRIENDLY_MSG_LENGTH_KEY);
+        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter((int) friendlyMessageLength)});
         Log.e(TAG,FRIENDLY_MSG_LENGTH_KEY+" = "+friendlyMessageLength);
     }
 }
