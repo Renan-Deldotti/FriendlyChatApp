@@ -7,13 +7,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
-import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
@@ -22,13 +18,11 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
@@ -47,11 +41,9 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageException;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -261,58 +253,82 @@ public class MainActivity extends AppCompatActivity {
             }
         }else if(requestCode == RC_PHOTO_PICKER){
             if (resultCode == RESULT_OK){
-                Uri selectedImageUri = data.getData();
-                final StorageReference photoRef = storageReference.child(selectedImageUri.getLastPathSegment());
-                UploadTask uploadTask = photoRef.putFile(selectedImageUri);
-                uploadTask.addOnFailureListener(MainActivity.this, new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        Snackbar.make(findViewById(R.id.main_activity),"Fail", BaseTransientBottomBar.LENGTH_LONG).show();
-                    }
-                }).addOnSuccessListener(MainActivity.this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        Snackbar.make(findViewById(R.id.main_activity),"Success",BaseTransientBottomBar.LENGTH_LONG).show();
-                        Log.e(TAG,"BytesTransferred: "+taskSnapshot.getBytesTransferred());
-                        Log.e(TAG,"TotalByteCount: "+taskSnapshot.getTotalByteCount());
-                        Log.e(TAG,"UploadSessionUri: "+taskSnapshot.getUploadSessionUri());
-                    }
-                });
-                Task<Uri> uriTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
-                    @Override
-                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                        if(!task.isSuccessful()){
-                            throw task.getException();
-                        }
-                        return photoRef.getDownloadUrl();
-                    }
-                }).addOnCompleteListener(MainActivity.this, new OnCompleteListener<Uri>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Uri> task) {
-                        if (!task.isSuccessful()){
-                            Toast.makeText(MainActivity.this,"No download Url",Toast.LENGTH_LONG).show();
-                        }
-                        Uri downloadUri = task.getResult();
-                        if (downloadUri != null) {
-                            FriendlyMessage friendlyMessage = new FriendlyMessage(null, userName, downloadUri.toString());
-                            databaseReference.push().setValue(friendlyMessage);
-                        }else {
-                            Toast.makeText(MainActivity.this,"No download Url",Toast.LENGTH_LONG).show();
-                        }
-                    }
-                });
-                /*photoRef.putFile(selectedImageUri);
-                photoRef.getDownloadUrl().addOnSuccessListener(MainActivity.this, new OnSuccessListener<Uri>() {
-                    @Override
-                    public void onSuccess(Uri uri) {
-                        FriendlyMessage friendlyMessage = new FriendlyMessage(null,userName,uri.toString());
-                        databaseReference.push().setValue(friendlyMessage);
-                    }
-                });*/
+                boolean lessThanMaxSize = false;
+                if(data!=null){
+                    Uri uri = data.getData();
+                    lessThanMaxSize = checkSize(uri);
+                }
+                if (lessThanMaxSize){
+                    uploadPhoto(data);
+                }else {
+                    Snackbar.make(findViewById(R.id.main_activity),"File to big",BaseTransientBottomBar.LENGTH_LONG).show();
+                }
             }else{
                 Toast.makeText(MainActivity.this,"Error uploading image.",Toast.LENGTH_LONG).show();
             }
         }
+    }
+
+    private boolean checkSize(Uri uri){
+        long sizeToMatch = 3 * 1024 * 1024;
+        Log.e(TAG,""+uri);
+        Cursor queryCursor = getContentResolver().query(uri,null,null,null,null);
+        if (queryCursor == null){
+            return false;
+        }
+        queryCursor.moveToFirst();
+        long imgSize = queryCursor.getLong(queryCursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE));
+        Log.e(TAG,""+queryCursor.getString(queryCursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)));
+        queryCursor.close();
+        return imgSize <= sizeToMatch;
+    }
+
+    private void uploadPhoto(Intent data){
+        Uri selectedImageUri = data.getData();
+        final StorageReference photoRef = storageReference.child(selectedImageUri.getLastPathSegment());
+        UploadTask uploadTask = photoRef.putFile(selectedImageUri);
+        uploadTask.addOnFailureListener(MainActivity.this, new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Snackbar.make(findViewById(R.id.main_activity),"Fail", BaseTransientBottomBar.LENGTH_LONG).show();
+            }
+        }).addOnSuccessListener(MainActivity.this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
+            @Override
+            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                Snackbar.make(findViewById(R.id.main_activity),"Success",BaseTransientBottomBar.LENGTH_LONG).show();
+                Log.e(TAG,"BytesTransferred: "+taskSnapshot.getBytesTransferred());
+                Log.e(TAG,"TotalByteCount: "+taskSnapshot.getTotalByteCount());
+            }
+        });
+        Task<Uri> uriTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+            @Override
+            public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                if(!task.isSuccessful()){
+                    //throw task.getException();
+                    Log.e(TAG,"Exception: "+task.getException());
+                }
+                return photoRef.getDownloadUrl();
+            }
+        }).addOnCompleteListener(MainActivity.this, new OnCompleteListener<Uri>() {
+            @Override
+            public void onComplete(@NonNull Task<Uri> task) {
+                if (!task.isSuccessful()){
+                    Toast.makeText(MainActivity.this,"No download Url",Toast.LENGTH_LONG).show();
+                }
+                Uri downloadUri = task.getResult();
+                if (downloadUri != null) {
+                    FriendlyMessage friendlyMessage = new FriendlyMessage(null, userName, downloadUri.toString());
+                    databaseReference.push().setValue(friendlyMessage);
+                }else {
+                    Toast.makeText(MainActivity.this,"No download Url",Toast.LENGTH_LONG).show();
+                }
+            }
+        }).addOnFailureListener(MainActivity.this, new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Snackbar.make(findViewById(R.id.main_activity),"Fail",BaseTransientBottomBar.LENGTH_LONG).show();
+            }
+        });
     }
 
     @Override
