@@ -40,13 +40,17 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -54,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String ANONYMOUS = "anonymous";
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
+    private static final String FRIENDLY_MSG_LENGTH_KEY = "friendly_msg_length";
     private static final int RC_SIGN_IN = 1;
     private static final int RC_PHOTO_PICKER = 2;
 
@@ -74,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener authStateListener;
     private FirebaseStorage firebaseStorage;
     private StorageReference storageReference;
+    private FirebaseRemoteConfig firebaseRemoteConfig;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
 
         firebaseStorage = FirebaseStorage.getInstance();
         firebaseAuth = FirebaseAuth.getInstance();
+        firebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
         authStateListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
@@ -186,7 +193,16 @@ public class MainActivity extends AppCompatActivity {
         addContentView(crashButton, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));*/
+        FirebaseRemoteConfigSettings remoteConfig = new FirebaseRemoteConfigSettings.Builder()
+                .setDeveloperModeEnabled(BuildConfig.DEBUG)
+                .build();
+        firebaseRemoteConfig.setConfigSettingsAsync(remoteConfig);
+        Map<String,Object> defaultConfigMap = new HashMap<>();
+        defaultConfigMap.put(FRIENDLY_MSG_LENGTH_KEY,DEFAULT_MSG_LENGTH_LIMIT);
+        firebaseRemoteConfig.setDefaultsAsync(defaultConfigMap);
+        fetchConfig();
     }
+
 
     private void onSignedOutCleanup() {
         userName = ANONYMOUS;
@@ -271,14 +287,14 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean checkSize(Uri uri){
         long sizeToMatch = 3 * 1024 * 1024;
-        Log.e(TAG,""+uri);
+        //Log.e(TAG,""+uri);
         Cursor queryCursor = getContentResolver().query(uri,null,null,null,null);
         if (queryCursor == null){
             return false;
         }
         queryCursor.moveToFirst();
         long imgSize = queryCursor.getLong(queryCursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE));
-        Log.e(TAG,""+queryCursor.getString(queryCursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)));
+        //Log.e(TAG,""+queryCursor.getString(queryCursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)));
         queryCursor.close();
         return imgSize <= sizeToMatch;
     }
@@ -296,8 +312,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
                 Snackbar.make(findViewById(R.id.main_activity),"Success",BaseTransientBottomBar.LENGTH_LONG).show();
-                Log.e(TAG,"BytesTransferred: "+taskSnapshot.getBytesTransferred());
-                Log.e(TAG,"TotalByteCount: "+taskSnapshot.getTotalByteCount());
+                //Log.e(TAG,"BytesTransferred: "+taskSnapshot.getBytesTransferred());
+                //Log.e(TAG,"TotalByteCount: "+taskSnapshot.getTotalByteCount());
             }
         });
         Task<Uri> uriTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
@@ -374,5 +390,32 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         firebaseAuth.addAuthStateListener(authStateListener);
+    }
+
+    private void fetchConfig() {
+        long cacheExpiration = 3600;
+        if (firebaseRemoteConfig.getInfo().getConfigSettings().isDeveloperModeEnabled()){
+            cacheExpiration = 0;
+        }
+        firebaseRemoteConfig.fetch(cacheExpiration)
+                .addOnSuccessListener(MainActivity.this, new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        firebaseRemoteConfig.activateFetched();
+                        applyRetrievedLengthLimit();
+                    }
+                }).addOnFailureListener(MainActivity.this, new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Log.e(TAG,"Error fetching config:::\t",e);
+                applyRetrievedLengthLimit();
+            }
+        });
+    }
+
+    private void applyRetrievedLengthLimit() {
+        Long friendlyMessageLength = firebaseRemoteConfig.getLong(FRIENDLY_MSG_LENGTH_KEY);
+        messageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(friendlyMessageLength.intValue())});
+        Log.e(TAG,FRIENDLY_MSG_LENGTH_KEY+" = "+friendlyMessageLength);
     }
 }
