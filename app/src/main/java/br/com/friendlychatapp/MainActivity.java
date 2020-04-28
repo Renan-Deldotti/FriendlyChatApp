@@ -469,6 +469,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onPause() {
+        Log.e(TAG,"onPause called");
         super.onPause();
         if(authStateListener != null)
             firebaseAuth.removeAuthStateListener(authStateListener);
@@ -478,6 +479,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
+        Log.e(TAG,"onResume called");
         super.onResume();
         firebaseAuth.addAuthStateListener(authStateListener);
     }
